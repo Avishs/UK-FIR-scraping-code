@@ -14,13 +14,25 @@ def download_one_FIR_num(driver, path, download_dir):
     # Find the table element
     table = driver.find_element("id", "ContentPlaceHolder1_gdvFirSearch")
 
+    time.sleep(1)
     # Find all rows in the table
-    rows = table.find_elements(By.TAG_NAME, 'tr')
+
+    try:
+        rows = table.find_elements(By.TAG_NAME, 'tr')
+        time.sleep(1)
+    except selenium.common.exceptions.StaleElementReferenceException:
+        print("hello!")
+
 
     # Iterate over each row in the table
     for row in rows:
         # Find all columns in the row
-        columns = row.find_elements(By.TAG_NAME, "td")
+        try:
+            columns = row.find_elements(By.TAG_NAME, "td")
+        except selenium.common.exceptions.StaleElementReferenceException:
+            print("Stale element")
+            time.sleep(3)
+
         # Check if the first column value is in the predefined set of values
         if len(columns) > 0 and columns[1].text[-4:] in ["2019", "2021", "2022"]:
             # Listing the old files still in the directory
@@ -28,7 +40,7 @@ def download_one_FIR_num(driver, path, download_dir):
             print("year=", columns[1].text[-4:])
             # If yes, click the link in the second column (assuming it's a link)
             print("Column value")
-            print(columns[6])
+            print(columns[6].text)
             link = columns[6].find_element(By.TAG_NAME, "a")
             print(link.text)
             windows_before = driver.window_handles
@@ -61,8 +73,13 @@ def download_one_FIR_num(driver, path, download_dir):
                     break
             # rename and re-store downloaded file
             # The full name is the address, along with the date
-            os.rename(os.path.join(download_dir, downloaded_file), os.path.join(path, downloaded_file))
+            #os.rename(os.path.join(download_dir, downloaded_file), os.path.join(path, downloaded_file))
+            time.sleep(2)
+            # close the fir window
+            driver.refresh()
+            print(driver.get_window_size())
             driver.switch_to.window(windows_before[0])
+        time.sleep(3)
 
 
 def main(dist: int, stn: int):
@@ -86,7 +103,7 @@ def main(dist: int, stn: int):
             time.sleep(4)
 
     # loop through the FIR numbers
-    for i in range(1, 100):
+    for i in range(5, 100):
         FIR = driver.find_element("id", "ContentPlaceHolder1_txtFirNoSearch")
         FIR.click()
         FIR.send_keys("1")
@@ -95,22 +112,21 @@ def main(dist: int, stn: int):
 
         district_list = Select(driver.find_element("id", "ContentPlaceHolder1_ddlDitrictFirSearch"))
 
-        time.sleep(5)
+        time.sleep(3)
         district_names = []
         for district in district_list.options:
             district_names.append(district.text)
 
         for district in district_names[dist]:
+            district_list.select_by_index(dist)
             print(district)
-            district_list.select_by_visible_text(district)
             time.sleep(3)
             station_list = Select(driver.find_element("id", "ContentPlaceHolder1_ddlPoliceStationFirSearch"))
             station_names = []
             for station in station_list.options:
                 station_names.append(station.text)
 
-            for station in station_names[stn:]:
-
+            for station in station_names[stn:]: # stn should be 1 by default
                 path = os.path.join(download_dir, district, station)
                 print(path)
                 time.sleep(5)
@@ -120,16 +136,16 @@ def main(dist: int, stn: int):
                     try:
                         station_list = Select(
                             driver.find_element("id", "ContentPlaceHolder1_ddlPoliceStationFirSearch"))
-                        station_list.select_by_visible_text(station)
+                        station_list.select_by_index(stn)
                     except selenium.common.exceptions.StaleElementReferenceException:
                         print("stale element!")
                     else:
                         break
+
+                    stn = stn+1
                     time.sleep(5)
                     bool_var = expected_conditions.staleness_of(station_list)
 
-                time.sleep(3)
-                station_list.select_by_visible_text(station)
                 time.sleep(3)
                 print(station)
 
