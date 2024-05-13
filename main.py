@@ -22,7 +22,7 @@ def download_one_FIR_num(driver, path, download_dir):
         rows = table.find_elements(By.TAG_NAME, 'tr')
     except selenium.common.exceptions.StaleElementReferenceException:
         print("Not able to find any rows")
-        return
+        return 1
 
     num_rows = len(rows)
     index_row = 0
@@ -79,6 +79,7 @@ def download_one_FIR_num(driver, path, download_dir):
             download_button_inner.click()
             time.sleep(4)
 
+            downloading_too_long = 0
             while True:
                 try:
                     # List the new files in the directory
@@ -89,7 +90,12 @@ def download_one_FIR_num(driver, path, download_dir):
                     time.sleep(5)
                 except IndexError:
                     print("File not downloaded yet!")
+                    downloading_too_long = downloading_too_long+1
+                    if downloading_too_long>10:
+                        driver.switch_to.window(default_window)
+                        download_one_FIR_num(driver, path, download_dir)
                     time.sleep(4)
+
                 else:
                     break
             # rename and re-store downloaded file
@@ -103,6 +109,7 @@ def download_one_FIR_num(driver, path, download_dir):
     driver.switch_to.window(file_window_handle)
     driver.close()
     driver.switch_to.window(default_window)
+    return 0
 
 
 def main(dist: int = 1, stn: int = 1):
@@ -126,55 +133,70 @@ def main(dist: int = 1, stn: int = 1):
             time.sleep(4)
 
     # loop through the FIR numbers
-    for i in range(5, 100):
-        FIR = driver.find_element("id", "ContentPlaceHolder1_txtFirNoSearch")
-        FIR.click()
-        FIR.send_keys(str(i))
+
+    district_list = Select(driver.find_element("id", "ContentPlaceHolder1_ddlDitrictFirSearch"))
+    time.sleep(3)
+    district_names = []
+    for district in district_list.options:
+        district_names.append(transliterate.process('Devanagari', 'ISO', district.accessible_name))
+    district = district_names[dist]
+    district_list.select_by_index(dist)
+    print(district)
+    time.sleep(5)
+    station_list = Select(driver.find_element("id", "ContentPlaceHolder1_ddlPoliceStationFirSearch"))
+    station_names = []
+    for station in station_list.options:
+        station_names.append(transliterate.process('Devanagari', 'ISO', station.accessible_name))
+    print(station_names)
+
+    for station in station_names[stn:]:  # stn should be 1 by default
+        path = os.path.join(download_dir, district, station)
+        print(station)
         time.sleep(5)
-        district_list = Select(driver.find_element("id", "ContentPlaceHolder1_ddlDitrictFirSearch"))
-        time.sleep(3)
-        district_names = []
-        for district in district_list.options:
-            district_names.append(transliterate.process('Devanagari', 'ISO', district.accessible_name))
+        bool_var = expected_conditions.staleness_of(station_list)
+        while bool_var:
+            # Select the police station
+            try:
+                station_list = Select(
+                    driver.find_element("id", "ContentPlaceHolder1_ddlPoliceStationFirSearch"))
+                station_list.select_by_index(stn)
+            except selenium.common.exceptions.StaleElementReferenceException:
+                print("stale element!")
+            else:
+                break
 
-        district = district_names[dist]
-        district_list.select_by_index(dist)
-        print(district)
-        time.sleep(3)
-        station_list = Select(driver.find_element("id", "ContentPlaceHolder1_ddlPoliceStationFirSearch"))
-        station_names = []
-        for station in station_list.options:
-            station_names.append(transliterate.process('Devanagari', 'ISO', station.accessible_name))
-
-        for station in station_names[stn:]:  # stn should be 1 by default
-            path = os.path.join(download_dir, district, station)
+            stn = stn + 1
             time.sleep(5)
             bool_var = expected_conditions.staleness_of(station_list)
-            while bool_var:
-                # Select the police station
-                try:
-                    station_list = Select(
-                        driver.find_element("id", "ContentPlaceHolder1_ddlPoliceStationFirSearch"))
-                    station_list.select_by_index(stn)
-                except selenium.common.exceptions.StaleElementReferenceException:
-                    print("stale element!")
-                else:
-                    break
 
-                stn = stn + 1
-                time.sleep(5)
-                bool_var = expected_conditions.staleness_of(station_list)
+        time.sleep(5)
+        #print(station)
 
+        # loop fir num
+        for i in range(1, 100):
+            FIR = driver.find_element("id", "ContentPlaceHolder1_txtFirNoSearch")
+            FIR.click()
+            print(i)
+            FIR.clear()
+            FIR.send_keys(str(i))
             time.sleep(3)
-            print(station)
 
             # click submit button
 
             search_button = driver.find_element("id", "ContentPlaceHolder1_btnSearchFir")
             search_button.click()
+            print("Searching")
             time.sleep(5)
 
-            download_one_FIR_num(driver, path, download_dir)
+
+            try:
+                _ = driver.find_element('id', 'ContentPlaceHolder1_gdvFirSearch_lblNoRecordFound')
+                print("No more FIRs here!")
+                break
+            except:
+                download_one_FIR_num(driver, path, download_dir)
+
+
     driver.close()
     driver.quit()
 
