@@ -7,8 +7,8 @@ from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 import selenium.common.exceptions
+from selenium.webdriver.common.keys import Keys
 import os
-from aksharamukha import transliterate
 
 
 def download_one_FIR_num(driver, path, download_dir):
@@ -112,7 +112,7 @@ def download_one_FIR_num(driver, path, download_dir):
     return 0
 
 
-def main(dist: int = 1, stn: int = 1):
+def main(dist: int, stn: int):
     download_dir = 'C:/Users/asha2/Downloads'
     wd_path = 'C:/Users/asha2/Documents/_Projects/FIRs_2021_2022/UK/downloading/chromedriver.exe'
     s = Service(wd_path)
@@ -138,7 +138,7 @@ def main(dist: int = 1, stn: int = 1):
     time.sleep(3)
     district_names = []
     for district in district_list.options:
-        district_names.append(transliterate.process('Devanagari', 'ISO', district.accessible_name))
+        district_names.append(district.accessible_name)
     district = district_names[dist]
     district_list.select_by_index(dist)
     print(district)
@@ -146,7 +146,7 @@ def main(dist: int = 1, stn: int = 1):
     station_list = Select(driver.find_element("id", "ContentPlaceHolder1_ddlPoliceStationFirSearch"))
     station_names = []
     for station in station_list.options:
-        station_names.append(transliterate.process('Devanagari', 'ISO', station.accessible_name))
+        station_names.append(station.accessible_name)
     print(station_names)
 
     for station in station_names[stn:]:  # stn should be 1 by default
@@ -179,12 +179,13 @@ def main(dist: int = 1, stn: int = 1):
             print(i)
             FIR.clear()
             FIR.send_keys(str(i))
-            time.sleep(3)
+            time.sleep(1)
+            FIR.send_keys(Keys.ENTER)
 
             # click submit button
 
-            search_button = driver.find_element("id", "ContentPlaceHolder1_btnSearchFir")
-            search_button.click()
+            #search_button = driver.find_element("id", "ContentPlaceHolder1_btnSearchFir")
+            #search_button.click()
             print("Searching")
             time.sleep(5)
 
@@ -194,7 +195,8 @@ def main(dist: int = 1, stn: int = 1):
                 print("No more FIRs here!")
                 break
             except:
-                download_one_FIR_num(driver, path, download_dir)
+                #download_one_FIR_num(driver, path, download_dir)
+                print("downloading")
 
 
     driver.close()
