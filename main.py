@@ -96,8 +96,8 @@ def download_one_FIR_num(driver, path, download_dir):
                     time.sleep(5)
                 except IndexError:
                     print("File not downloaded yet!")
-                    downloading_too_long = downloading_too_long+1
-                    if downloading_too_long>10:
+                    downloading_too_long = downloading_too_long + 1
+                    if downloading_too_long > 10:
                         driver.switch_to.window(default_window)
                         download_one_FIR_num(driver, path, download_dir)
                     time.sleep(4)
@@ -113,19 +113,27 @@ def download_one_FIR_num(driver, path, download_dir):
         # time.sleep(3)
         # index_row = index_row + 1
         index_row = updateIndex(index_row)
-    driver.switch_to.window(file_window_handle)
-    driver.close()
-    driver.switch_to.window(default_window)
+
+    try:
+        driver.switch_to.window(file_window_handle)
+        driver.close()
+        driver.switch_to.window(default_window)
+    except UnboundLocalError:
+        print("No FIRs for the necessary years!")
     return 0
+
 
 def updateIndex(index_row):
     time.sleep(1)
     index_row = index_row + 1
     return index_row
 
+
 def main(dist, stn):
-    download_dir = 'C:/Users/asha2/Downloads'
-    wd_path = 'C:/Users/asha2/Documents/_Projects/FIRs_2021_2022/UK/downloading/chromedriver.exe'
+    home = os.path.expanduser("~")
+    download_dir = os.path.join(home, "Downloads")
+    absolute_path = os.path.dirname(__file__)
+    wd_path = os.path.join(absolute_path, 'chromedriver.exe')
     s = Service(wd_path)
 
     driver = webdriver.Chrome(service=s)
@@ -182,7 +190,7 @@ def main(dist, stn):
             bool_var = expected_conditions.staleness_of(station_list)
 
         time.sleep(5)
-        #print(station)
+        # print(station)
 
         # loop fir num
         for i in range(1, 20):
@@ -194,14 +202,8 @@ def main(dist, stn):
             FIR.send_keys(str(i))
             time.sleep(1)
             FIR.send_keys(Keys.ENTER)
-
-            # click submit button
-
-            #search_button = driver.find_element("id", "ContentPlaceHolder1_btnSearchFir")
-            #search_button.click()
             print("Searching")
             time.sleep(5)
-
 
             try:
                 _ = driver.find_element('id', 'ContentPlaceHolder1_gdvFirSearch_lblNoRecordFound')
@@ -210,7 +212,6 @@ def main(dist, stn):
             except:
                 download_one_FIR_num(driver, path, download_dir)
                 print("downloading")
-
 
     driver.close()
     driver.quit()
