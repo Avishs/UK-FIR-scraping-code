@@ -218,4 +218,7 @@ def main(dist, stn):
 
 
 if __name__ == '__main__':
-    main(1, 1)
+    firNo = input("Enter FIR No: ")
+    psNo = input("Enter PS No: ")
+    print("Entered values are: ", firNo, psNo)
+    main(firNo, psNo)
