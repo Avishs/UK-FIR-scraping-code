@@ -29,25 +29,31 @@ def download_one_FIR_num(driver, path, download_dir):
     default_window = driver.current_window_handle
     # Iterate over each row in the table
     while index_row < num_rows:
-
+        print("WHILE loop=", index_row)
         # Find all columns in the row
         try:
             columns = rows[index_row].find_elements(By.TAG_NAME, "td")
         except selenium.common.exceptions.StaleElementReferenceException:
-            table = driver.find_element("id", "ContentPlaceHolder1_gdvFirSearch")
-            rows = table.find_elements(By.TAG_NAME, 'tr')
-            row = rows[index_row]
-            columns = row.find_elements(By.TAG_NAME, "td")
+            # table = driver.find_element("id", "ContentPlaceHolder1_gdvFirSearch")
+            # rows = table.find_elements(By.TAG_NAME, 'tr')
+            # row = rows[index_row]
+            # columns = row.find_elements(By.TAG_NAME, "td")
+            print("Invalid index: Stale element")
+            index_row = updateIndex(index_row)
+            continue
 
         try:
             print(columns[1].text[-4:])
         except IndexError:
-            time.sleep(5)
-            table = driver.find_element("id", "ContentPlaceHolder1_gdvFirSearch")
-            rows = table.find_elements(By.TAG_NAME, 'tr')
-            row = rows[index_row]
-            columns = row.find_elements(By.TAG_NAME, "td")
-
+            print("Invalid index")
+            index_row = updateIndex(index_row)
+            continue
+            # time.sleep(5)
+            # table = driver.find_element("id", "ContentPlaceHolder1_gdvFirSearch")
+            # rows = table.find_elements(By.TAG_NAME, 'tr')
+            # row = rows[index_row]
+            # columns = row.find_elements(By.TAG_NAME, "td")
+        print("Before columns check")
         # Check if the first column value is in the predefined set of values
         if len(columns) > 0 and columns[1].text[-4:] in ["2019", "2021", "2022"]:
             # Listing the old files still in the directory
@@ -83,9 +89,9 @@ def download_one_FIR_num(driver, path, download_dir):
             while True:
                 try:
                     # List the new files in the directory
-                    new_files = os.listdir(download_dir)
+                    # new_files = os.listdir(download_dir)
                     # Check which file is new.
-                    downloaded_file = [x for x in new_files if x not in old_files][0]
+                    # downloaded_file = [x for x in new_files if x not in old_files][0]
                     print("File Downloaded")
                     time.sleep(5)
                 except IndexError:
@@ -104,18 +110,24 @@ def download_one_FIR_num(driver, path, download_dir):
             time.sleep(2)
             driver.refresh()
             driver.switch_to.window(windows_before[0])
-        time.sleep(3)
-        index_row = index_row + 1
+        # time.sleep(3)
+        # index_row = index_row + 1
+        index_row = updateIndex(index_row)
     driver.switch_to.window(file_window_handle)
     driver.close()
     driver.switch_to.window(default_window)
     return 0
 
+def updateIndex(index_row):
+    time.sleep(1)
+    index_row = index_row + 1
+    return index_row
 
-def main(dist: int, stn: int):
+def main(dist, stn):
     download_dir = 'C:/Users/asha2/Downloads'
     wd_path = 'C:/Users/asha2/Documents/_Projects/FIRs_2021_2022/UK/downloading/chromedriver.exe'
     s = Service(wd_path)
+
     driver = webdriver.Chrome(service=s)
     url = 'https://policecitizenportal.uk.gov.in/Citi/firSearch.aspx'
 
@@ -150,7 +162,7 @@ def main(dist: int, stn: int):
     print(station_names)
 
     for station in station_names[stn:]:  # stn should be 1 by default
-        path = os.path.join(download_dir, district, station)
+        path = os.path.join(download_dir, str(dist), str(stn))
         print(station)
         time.sleep(5)
         bool_var = expected_conditions.staleness_of(station_list)
@@ -173,9 +185,10 @@ def main(dist: int, stn: int):
         #print(station)
 
         # loop fir num
-        for i in range(1, 100):
+        for i in range(1, 20):
             FIR = driver.find_element("id", "ContentPlaceHolder1_txtFirNoSearch")
             FIR.click()
+            print("FIR num=")
             print(i)
             FIR.clear()
             FIR.send_keys(str(i))
@@ -195,7 +208,7 @@ def main(dist: int, stn: int):
                 print("No more FIRs here!")
                 break
             except:
-                #download_one_FIR_num(driver, path, download_dir)
+                download_one_FIR_num(driver, path, download_dir)
                 print("downloading")
 
 
