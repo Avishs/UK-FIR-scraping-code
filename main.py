@@ -29,30 +29,21 @@ def download_one_FIR_num(driver, path, download_dir):
     default_window = driver.current_window_handle
     # Iterate over each row in the table
     while index_row < num_rows:
-        print("WHILE loop=", index_row)
+        print("index_row: ", index_row)
         # Find all columns in the row
         try:
             columns = rows[index_row].find_elements(By.TAG_NAME, "td")
         except selenium.common.exceptions.StaleElementReferenceException:
-            # table = driver.find_element("id", "ContentPlaceHolder1_gdvFirSearch")
-            # rows = table.find_elements(By.TAG_NAME, 'tr')
-            # row = rows[index_row]
-            # columns = row.find_elements(By.TAG_NAME, "td")
             print("Invalid index: Stale element")
             index_row = updateIndex(index_row)
             continue
 
         try:
-            print(columns[1].text[-4:])
+            print("Year: ", columns[1].text[-4:])
         except IndexError:
             print("Invalid index")
             index_row = updateIndex(index_row)
             continue
-            # time.sleep(5)
-            # table = driver.find_element("id", "ContentPlaceHolder1_gdvFirSearch")
-            # rows = table.find_elements(By.TAG_NAME, 'tr')
-            # row = rows[index_row]
-            # columns = row.find_elements(By.TAG_NAME, "td")
         print("Before columns check")
         # Check if the first column value is in the predefined set of values
         if len(columns) > 0 and columns[1].text[-4:] in ["2019", "2021", "2022"]:
@@ -128,8 +119,9 @@ def updateIndex(index_row):
     index_row = index_row + 1
     return index_row
 
-
 def main(dist, stn):
+    dist = int(dist)
+    stn = int(stn)
     home = os.path.expanduser("~")
     download_dir = os.path.join(home, "Downloads")
     absolute_path = os.path.dirname(__file__)
@@ -161,17 +153,17 @@ def main(dist, stn):
         district_names.append(district.accessible_name)
     district = district_names[dist]
     district_list.select_by_index(dist)
-    print(district)
+    print("District: ", district)
     time.sleep(5)
     station_list = Select(driver.find_element("id", "ContentPlaceHolder1_ddlPoliceStationFirSearch"))
     station_names = []
     for station in station_list.options:
         station_names.append(station.accessible_name)
-    print(station_names)
+    print("Station names: ", station_names)
 
     for station in station_names[stn:]:  # stn should be 1 by default
         path = os.path.join(download_dir, str(dist), str(stn))
-        print(station)
+        print("Station: ", station)
         time.sleep(5)
         bool_var = expected_conditions.staleness_of(station_list)
         while bool_var:
@@ -218,7 +210,7 @@ def main(dist, stn):
 
 
 if __name__ == '__main__':
-    firNo = input("Enter FIR No: ")
+    distNo = input("Enter District No: ")
     psNo = input("Enter PS No: ")
-    print("Entered values are: ", firNo, psNo)
-    main(firNo, psNo)
+    print("Entered values are: ", distNo, psNo)
+    main(distNo, psNo)
