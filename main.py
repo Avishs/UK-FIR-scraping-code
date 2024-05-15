@@ -193,7 +193,7 @@ def main(dist, stn):
         # print(station)
 
         # loop fir num
-        for i in range(1, 20):
+        for i in range(1, 1000):
             FIR = driver.find_element("id", "ContentPlaceHolder1_txtFirNoSearch")
             FIR.click()
             print("FIR num=")
