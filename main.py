@@ -27,6 +27,7 @@ def download_one_FIR_num(driver, path, download_dir):
     num_rows = len(rows)
     index_row = 0
     default_window = driver.current_window_handle
+    print("num_rows: ", num_rows)
     # Iterate over each row in the table
     while index_row < num_rows:
         print("index_row: ", index_row)
@@ -47,8 +48,9 @@ def download_one_FIR_num(driver, path, download_dir):
         print("Before columns check")
         # Check if the first column value is in the predefined set of values
         if len(columns) > 0 and columns[1].text[-4:] in ["2019", "2021", "2022"]:
+            print("Columns check: true")
             # Listing the old files still in the directory
-            old_files = os.listdir(download_dir)
+            # old_files = os.listdir(download_dir)
             # If yes, click the link in the second column (assuming it's a link)
             link = columns[6].find_element(By.TAG_NAME, "a")
             windows_before = driver.window_handles
@@ -101,8 +103,7 @@ def download_one_FIR_num(driver, path, download_dir):
             time.sleep(2)
             driver.refresh()
             driver.switch_to.window(windows_before[0])
-        # time.sleep(3)
-        # index_row = index_row + 1
+        print("Columns check: false")
         index_row = updateIndex(index_row)
 
     try:
@@ -113,9 +114,8 @@ def download_one_FIR_num(driver, path, download_dir):
         print("No FIRs for the necessary years!")
     return 0
 
-
 def updateIndex(index_row):
-    time.sleep(1)
+    # time.sleep(1)
     index_row = index_row + 1
     return index_row
 
@@ -188,7 +188,7 @@ def main(dist, stn):
         for i in range(1, 1000):
             FIR = driver.find_element("id", "ContentPlaceHolder1_txtFirNoSearch")
             FIR.click()
-            print("FIR num=")
+            print("\nFIR num=")
             print(i)
             FIR.clear()
             FIR.send_keys(str(i))
