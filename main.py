@@ -12,6 +12,7 @@ import os
 
 
 def download_one_FIR_num(driver, path, download_dir):
+    print("Download One FIR called---------------")
     # Find the table element
     table = driver.find_element("id", "ContentPlaceHolder1_gdvFirSearch")
 
@@ -50,23 +51,26 @@ def download_one_FIR_num(driver, path, download_dir):
         if len(columns) > 0 and columns[1].text[-4:] in ["2019", "2021", "2022"]:
             print("Columns check: true")
             # Listing the old files still in the directory
-            # old_files = os.listdir(download_dir)
+            old_files = os.listdir(download_dir)
             # If yes, click the link in the second column (assuming it's a link)
             link = columns[6].find_element(By.TAG_NAME, "a")
-            windows_before = driver.window_handles
+            # windows_before = driver.window_handles
+            windows_before = driver.window_handles[0] # before link is clicked
             link.click()
             time.sleep(4)
-
-            try:
-                # Go to the new page and download the FIR
-                WebDriverWait(driver, 20).until(expected_conditions.new_window_is_opened(windows_before))
-                time.sleep(3)
-                # if its the first time, store the window handle
-                driver.switch_to.window([x for x in driver.window_handles if x not in windows_before][0])
-                time.sleep(1)
-                file_window_handle = driver.current_window_handle
-            except selenium.common.exceptions.TimeoutException:
-                driver.switch_to.window(file_window_handle)
+            
+            windows_after = driver.window_handles[1]
+            driver.switch_to.window(windows_after)
+            # try:
+            #     # Go to the new page and download the FIR
+            #     WebDriverWait(driver, 20).until(expected_conditions.new_window_is_opened(windows_before))
+            #     time.sleep(3)
+            #     # if its the first time, store the window handle
+            #     driver.switch_to.window([x for x in driver.window_handles if x not in windows_before][0])
+            #     time.sleep(1)
+            #     file_window_handle = driver.current_window_handle
+            # except selenium.common.exceptions.TimeoutException:
+            #     driver.switch_to.window(file_window_handle)
 
             time.sleep(5)
             download_button_outer = driver.find_element("id", "RptView_ctl06_ctl04_ctl00_ButtonLink")
@@ -82,16 +86,19 @@ def download_one_FIR_num(driver, path, download_dir):
             while True:
                 try:
                     # List the new files in the directory
-                    # new_files = os.listdir(download_dir)
+                    new_files = os.listdir(download_dir)
                     # Check which file is new.
-                    # downloaded_file = [x for x in new_files if x not in old_files][0]
+                    downloaded_file = [x for x in new_files if x not in old_files][0]
                     print("File Downloaded")
+                    # driver.switch_to.window(default_window)
+                    driver.switch_to.window(windows_before)
                     time.sleep(5)
                 except IndexError:
                     print("File not downloaded yet!")
                     downloading_too_long = downloading_too_long + 1
                     if downloading_too_long > 10:
-                        driver.switch_to.window(default_window)
+                        # driver.switch_to.window(default_window)
+                        driver.switch_to.window(windows_before)
                         download_one_FIR_num(driver, path, download_dir)
                     time.sleep(4)
 
@@ -101,13 +108,16 @@ def download_one_FIR_num(driver, path, download_dir):
             # The full name is the address, along with the date
             # os.rename(os.path.join(download_dir, downloaded_file), os.path.join(path, downloaded_file))
             time.sleep(2)
-            driver.refresh()
-            driver.switch_to.window(windows_before[0])
+            # driver.close()
+            driver.switch_to.window(windows_before)
+            # driver.refresh()
+            # driver.switch_to.window(windows_before[0])
+            # driver.switch_to.window(windows_before)
         print("Columns check: false")
         index_row = updateIndex(index_row)
 
     try:
-        driver.switch_to.window(file_window_handle)
+        driver.switch_to.window(windows_after)
         driver.close()
         driver.switch_to.window(default_window)
     except UnboundLocalError:
