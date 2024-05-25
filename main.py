@@ -15,13 +15,12 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException, TimeoutException, StaleElementReferenceException, UnexpectedAlertPresentException, NoAlertPresentException, InvalidSessionIdException
 
 def fetch_table_and_rows(driver):
-        print("Fetching table and rows")
         table = driver.find_element(By.ID, "ContentPlaceHolder1_gdvFirSearch")
         rows = table.find_elements(By.TAG_NAME, 'tr')
         return table, rows
 
-def download_one_FIR_num(driver, path, download_dir):
-    print("Download One FIR called---------------")
+def downloadFIR(driver, path, download_dir):
+    print("\n---downloadFIR()---")
     try:
         _, rows = fetch_table_and_rows(driver)
 
@@ -41,9 +40,9 @@ def download_one_FIR_num(driver, path, download_dir):
                 index_row = updateIndex(index_row)
                 continue
 
-            print("Before columns check")
+            print("Before year check")
             if len(columns) > 0 and columns[1].text[-4:] in ["2019", "2021", "2022"]:
-                print("Columns check: true")
+                print("Year check: true")
                 old_files = os.listdir(download_dir)
                 link = columns[6].find_element(By.TAG_NAME, "a")
 
@@ -85,13 +84,14 @@ def download_one_FIR_num(driver, path, download_dir):
                         downloading_too_long += 1
                         if downloading_too_long > 10:
                             driver.switch_to.window(default_window)
-                            download_one_FIR_num(driver, path, download_dir)
+                            downloadFIR(driver, path, download_dir)
                         time.sleep(4)
 
                 time.sleep(2)
                 driver.close()
                 driver.switch_to.window(default_window)
-            print("Columns check: false")
+            else:
+                print("Year check: false")
             index_row = updateIndex(index_row)
 
         driver.switch_to.window(default_window)
@@ -117,6 +117,7 @@ def updateIndex(index_row):
     return index_row + 1
 
 def main(dist, stn, firNo=1):
+    print("\n---main()---")
     dist = int(dist)
     stn = int(stn)
     firNo = int(firNo)
@@ -130,7 +131,7 @@ def main(dist, stn, firNo=1):
     absolute_path = os.path.dirname(__file__)
     wd_path = os.path.join(absolute_path, 'chromedriver.exe')
     s = Service(wd_path)
-
+    
     driver = webdriver.Chrome(service=s)
     url = 'https://policecitizenportal.uk.gov.in/Citi/firSearch.aspx'
 
@@ -216,7 +217,6 @@ def main(dist, stn, firNo=1):
             FIR.send_keys(str(i))
             time.sleep(1)
             FIR.send_keys(Keys.ENTER)
-            print("Searching")
             time.sleep(5)
 
             try:
@@ -224,8 +224,7 @@ def main(dist, stn, firNo=1):
                 print("No more FIRs here!")
                 break
             except:
-                download_one_FIR_num(driver, path, download_dir)
-                print("downloading")
+                downloadFIR(driver, path, download_dir)
 
     driver.close()
     driver.quit()
