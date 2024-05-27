@@ -6,128 +6,132 @@ from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 import selenium.common.exceptions
 from selenium.webdriver.common.keys import Keys
 import os
 
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException, TimeoutException, StaleElementReferenceException, UnexpectedAlertPresentException, NoAlertPresentException, InvalidSessionIdException
 
-def download_one_FIR_num(driver, path, download_dir):
-    # Find the table element
-    table = driver.find_element("id", "ContentPlaceHolder1_gdvFirSearch")
-
-    time.sleep(1)
-    # Find all rows in the table
-
-    try:
+def fetch_table_and_rows(driver):
+        table = driver.find_element(By.ID, "ContentPlaceHolder1_gdvFirSearch")
         rows = table.find_elements(By.TAG_NAME, 'tr')
-    except selenium.common.exceptions.StaleElementReferenceException:
-        print("Not able to find any rows")
-        return 1
+        return table, rows
 
-    num_rows = len(rows)
-    index_row = 0
-    default_window = driver.current_window_handle
-    print("num_rows: ", num_rows)
-    # Iterate over each row in the table
-    while index_row < num_rows:
-        print("index_row: ", index_row)
-        # Find all columns in the row
-        try:
-            columns = rows[index_row].find_elements(By.TAG_NAME, "td")
-        except selenium.common.exceptions.StaleElementReferenceException:
-            print("Invalid index: Stale element")
-            index_row = updateIndex(index_row)
-            continue
-
-        try:
-            print("Year: ", columns[1].text[-4:])
-        except IndexError:
-            print("Invalid index")
-            index_row = updateIndex(index_row)
-            continue
-        print("Before columns check")
-        # Check if the first column value is in the predefined set of values
-        if len(columns) > 0 and columns[1].text[-4:] in ["2019", "2021", "2022"]:
-            print("Columns check: true")
-            # Listing the old files still in the directory
-            # old_files = os.listdir(download_dir)
-            # If yes, click the link in the second column (assuming it's a link)
-            link = columns[6].find_element(By.TAG_NAME, "a")
-            windows_before = driver.window_handles
-            link.click()
-            time.sleep(4)
-
-            try:
-                # Go to the new page and download the FIR
-                WebDriverWait(driver, 20).until(expected_conditions.new_window_is_opened(windows_before))
-                time.sleep(3)
-                # if its the first time, store the window handle
-                driver.switch_to.window([x for x in driver.window_handles if x not in windows_before][0])
-                time.sleep(1)
-                file_window_handle = driver.current_window_handle
-            except selenium.common.exceptions.TimeoutException:
-                driver.switch_to.window(file_window_handle)
-
-            time.sleep(5)
-            download_button_outer = driver.find_element("id", "RptView_ctl06_ctl04_ctl00_ButtonLink")
-            time.sleep(1)
-            download_button_outer.click()
-            time.sleep(1)
-            download_button_inner = driver.find_element(By.XPATH,
-                                                        "/html/body/form/span/div/table/tbody/tr[4]/td/span/div/div/div[4]/table/tbody/tr/td/div[2]/div[1]/a")
-            download_button_inner.click()
-            time.sleep(4)
-
-            downloading_too_long = 0
-            while True:
-                try:
-                    # List the new files in the directory
-                    # new_files = os.listdir(download_dir)
-                    # Check which file is new.
-                    # downloaded_file = [x for x in new_files if x not in old_files][0]
-                    print("File Downloaded")
-                    time.sleep(5)
-                except IndexError:
-                    print("File not downloaded yet!")
-                    downloading_too_long = downloading_too_long + 1
-                    if downloading_too_long > 10:
-                        driver.switch_to.window(default_window)
-                        download_one_FIR_num(driver, path, download_dir)
-                    time.sleep(4)
-
-                else:
-                    break
-            # rename and re-store downloaded file
-            # The full name is the address, along with the date
-            # os.rename(os.path.join(download_dir, downloaded_file), os.path.join(path, downloaded_file))
-            time.sleep(2)
-            driver.refresh()
-            driver.switch_to.window(windows_before[0])
-        print("Columns check: false")
-        index_row = updateIndex(index_row)
-
+def downloadFIR(driver, path, download_dir):
+    print("\n---downloadFIR()---")
     try:
-        driver.switch_to.window(file_window_handle)
-        driver.close()
+        _, rows = fetch_table_and_rows(driver)
+
+        num_rows = len(rows)
+        index_row = 0
+        default_window = driver.current_window_handle
+        print("num_rows: ", num_rows)
+
+        while index_row < num_rows:
+            print("index_row: ", index_row)
+            try:
+                _, rows = fetch_table_and_rows(driver)
+                columns = rows[index_row].find_elements(By.TAG_NAME, "td")
+                print("Year: ", columns[1].text[-4:])
+            except (StaleElementReferenceException, IndexError):
+                print("Invalid index: Stale element or IndexError")
+                index_row = updateIndex(index_row)
+                continue
+
+            print("Before year check")
+            if len(columns) > 0 and columns[1].text[-4:] in ["2019", "2021", "2022"]:
+                print("Year check: true")
+                old_files = os.listdir(download_dir)
+                link = columns[6].find_element(By.TAG_NAME, "a")
+
+                windows_before = driver.window_handles
+                link.click()
+
+                try:
+                    WebDriverWait(driver, 20).until(EC.new_window_is_opened(windows_before))
+                    driver.switch_to.window([x for x in driver.window_handles if x not in windows_before][0])
+                    file_window_handle = driver.current_window_handle
+                except TimeoutException:
+                    driver.switch_to.window(default_window)
+
+                try:
+                    download_button_outer = WebDriverWait(driver, 10).until(
+                        EC.element_to_be_clickable((By.ID, "RptView_ctl06_ctl04_ctl00_ButtonLink")))
+                    download_button_outer.click()
+
+                    download_button_inner = WebDriverWait(driver, 10).until(
+                        EC.element_to_be_clickable((By.XPATH, "/html/body/form/span/div/table/tbody/tr[4]/td/span/div/div/div[4]/table/tbody/tr/td/div[2]/div[1]/a")))
+                    download_button_inner.click()
+                except TimeoutException:
+                    print("Download button not found")
+                    driver.close()
+                    driver.switch_to.window(default_window)
+                    index_row = updateIndex(index_row)
+                    continue
+
+                downloading_too_long = 0
+                while True:
+                    try:
+                        new_files = os.listdir(download_dir)
+                        downloaded_file = [x for x in new_files if x not in old_files][0]
+                        print("File Downloaded")
+                        time.sleep(5)
+                        break
+                    except IndexError:
+                        print("File not downloaded yet!")
+                        downloading_too_long += 1
+                        if downloading_too_long > 10:
+                            driver.switch_to.window(default_window)
+                            downloadFIR(driver, path, download_dir)
+                        time.sleep(4)
+
+                time.sleep(2)
+                driver.close()
+                driver.switch_to.window(default_window)
+            else:
+                print("Year check: false")
+            index_row = updateIndex(index_row)
+
         driver.switch_to.window(default_window)
-    except UnboundLocalError:
-        print("No FIRs for the necessary years!")
+    except NoSuchElementException as e:
+        print(f"Error: {e}")
+    except UnexpectedAlertPresentException as f:
+        try:
+            wait = WebDriverWait(driver, 2)
+            alert = wait.until(EC.alert_is_present())
+            # alert = driver.switch_to.alert # not reqired with wait
+            alert_text = alert.text
+            print("Alert data:", alert_text)
+            alert.accept()
+        except NoAlertPresentException as e:
+            print(f"NoAlertPresentException error: {e}")
+        except TimeoutException:
+            print(f"Timeout exception: No alert was present within 2 seconds: {e}")
+    except Exception as e:
+        print(f"Unexpected error: {e}")
     return 0
 
 def updateIndex(index_row):
-    # time.sleep(1)
-    index_row = index_row + 1
-    return index_row
+    return index_row + 1
 
-def main(dist, stn):
+def main(dist, stn, firNo=1):
+    print("\n---main()---")
     dist = int(dist)
     stn = int(stn)
+    firNo = int(firNo)
+
+    # Set up desired capabilities
+    dc = DesiredCapabilities.CHROME.copy()
+    dc['unexpectedAlertBehaviour'] = 'ignore'
+
     home = os.path.expanduser("~")
     download_dir = os.path.join(home, "Downloads")
     absolute_path = os.path.dirname(__file__)
     wd_path = os.path.join(absolute_path, 'chromedriver.exe')
     s = Service(wd_path)
-
+    
     driver = webdriver.Chrome(service=s)
     url = 'https://policecitizenportal.uk.gov.in/Citi/firSearch.aspx'
 
@@ -185,16 +189,34 @@ def main(dist, stn):
         # print(station)
 
         # loop fir num
-        for i in range(1, 1000):
-            FIR = driver.find_element("id", "ContentPlaceHolder1_txtFirNoSearch")
-            FIR.click()
-            print("\nFIR num=")
-            print(i)
+        for i in range(firNo, 1000):
+            try:
+                FIR = driver.find_element("id", "ContentPlaceHolder1_txtFirNoSearch")
+            except NoSuchElementException as e:
+                print(f"No such element exception for: ContentPlaceHolder1_txtFirNoSearch at: {dist}, {stn}, {i}, exception: {e}")
+                driver.close()
+                driver.quit()
+                main(dist, stn, i)
+            except InvalidSessionIdException as e:
+                print(f"No such element exception for: ContentPlaceHolder1_txtFirNoSearch at: {dist}, {stn}, {i}, exception: {e}")
+                driver.close()
+                driver.quit()
+                main(dist, stn, i)
+
+            try:
+                FIR.click()
+            except StaleElementReferenceException as e:
+                print(f"Stale element exception for: ContentPlaceHolder1_txtFirNoSearch at: {dist}, {stn}, {i}, exception: {e}")
+                driver.close()
+                driver.quit()
+                main(dist, stn, i)
+
+            print(f"\nFIR num= {i}")
+            print(f"dist: {dist}, stn: {stn}")
             FIR.clear()
             FIR.send_keys(str(i))
             time.sleep(1)
             FIR.send_keys(Keys.ENTER)
-            print("Searching")
             time.sleep(5)
 
             try:
@@ -202,15 +224,16 @@ def main(dist, stn):
                 print("No more FIRs here!")
                 break
             except:
-                download_one_FIR_num(driver, path, download_dir)
-                print("downloading")
+                downloadFIR(driver, path, download_dir)
 
     driver.close()
     driver.quit()
 
-
 if __name__ == '__main__':
     distNo = input("Enter District No: ")
     psNo = input("Enter PS No: ")
-    print("Entered values are: ", distNo, psNo)
-    main(distNo, psNo)
+    firNo = input("Enter FIR No (default is 1): ")
+    if firNo == "" or firNo.strip() == "":
+        firNo = 1
+    print("Entered values are: ", distNo, psNo, firNo)
+    main(distNo, psNo, firNo)
