@@ -1,4 +1,0 @@
-import requests
-
-
-url = 'https://policecitizenportal.uk.gov.in/Citi/firSearch.aspx'
